@@ -6,11 +6,16 @@ using System.Collections.Generic;
 public class EXO1 : MonoBehaviour
 {
     [SerializeField]public string path;
+    [SerializeField] public List<Vector3> normals;
+
     void Start()
     {
         string[] content = File.ReadAllLines(Application.dataPath+ path);
         MeshFilter meshfilter = GetComponent<MeshFilter>();
-        meshfilter.mesh = meshFromOff(content);
+        Mesh newMesh = meshFromOff(content);
+        meshfilter.mesh = Instantiate(newMesh);
+        normals = calculateNormals2(meshfilter.mesh);
+        meshfilter.mesh.normals = normals.ToArray();
         meshfilter.mesh = removeFaces(meshfilter.mesh, new List<int> { 0, 1, 2 });
         ExportWrite(meshfilter.mesh, Application.dataPath + "/ExportedMesh.off");
     }
@@ -90,6 +95,68 @@ public class EXO1 : MonoBehaviour
             vertices[i] =new Vector3(vertices[i].x / max, vertices[i].y / max, vertices[i].z / max) ;
         }
             return vertices;
+    }
+
+
+    public List<Vector3> calculateNormals(Mesh mesh)
+    {
+        normals = new List<Vector3>(new Vector3[mesh.vertexCount]);
+        for (int i = 0; i < mesh.triangles.Length; i += 3)
+        {
+            Vector3 v0 = mesh.vertices[mesh.triangles[i]];
+            Vector3 v1 = mesh.vertices[mesh.triangles[i + 1]];
+            normals[mesh.triangles[i]] += Vector3.Cross(v1 - v0, mesh.vertices[mesh.triangles[i + 2]] - v0).normalized;
+        }
+        return normals;
+    }
+
+
+    //this version required the help of AI
+    public List<Vector3> calculateNormals2(Mesh mesh)
+    {
+        var verts = mesh.vertices;
+        var tris = mesh.triangles;
+        var normals = new List<Vector3>(new Vector3[verts.Length]);
+
+        for (int i = 0; i < tris.Length; i += 3)
+        {
+            int i0 = tris[i];
+            int i1 = tris[i + 1];
+            int i2 = tris[i + 2];
+
+            Vector3 v0 = verts[i0];
+            Vector3 v1 = verts[i1];
+            Vector3 v2 = verts[i2];
+
+            Vector3 normal = Vector3.Cross(v1 - v0, v2 - v0).normalized;
+
+            // Add the face normal to all three vertices
+            normals[i0] += normal;
+            normals[i1] += normal;
+            normals[i2] += normal;
+        }
+
+        // Normalize all accumulated vertex normals
+        for (int i = 0; i < normals.Count; i++)
+        {
+            normals[i] = normals[i].normalized;
+        }
+
+        return normals;
+    }
+
+    public List<Vector3> calculateFaceNormals(Mesh mesh)
+    { 
+        var faceNormals = new List<Vector3>(mesh.triangles.Length / 3);
+        for (int i = 0; i < mesh.triangles.Length; i += 3)
+        {
+            Vector3 v0 = mesh.vertices[mesh.triangles[i]];
+            Vector3 v1 = mesh.vertices[mesh.triangles[i + 1]];
+            Vector3 v2 = mesh.vertices[mesh.triangles[i + 2]];
+            Vector3 n = Vector3.Cross(v1 - v0, v2 - v0);
+            faceNormals.Add(n);
+        }
+        return faceNormals;
     }
 
     public Mesh removeFaces(Mesh mesh, List<int> facesToRemove)
