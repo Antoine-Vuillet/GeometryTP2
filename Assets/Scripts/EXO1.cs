@@ -11,6 +11,8 @@ public class EXO1 : MonoBehaviour
         string[] content = File.ReadAllLines(Application.dataPath+ path);
         MeshFilter meshfilter = GetComponent<MeshFilter>();
         meshfilter.mesh = meshFromOff(content);
+        meshfilter.mesh = removeFaces(meshfilter.mesh, new List<int> { 0, 1, 2 });
+        ExportWrite(meshfilter.mesh, Application.dataPath + "/ExportedMesh.off");
     }
 
     public Mesh meshFromOff(string[] content)
@@ -24,7 +26,6 @@ public class EXO1 : MonoBehaviour
         for (int i = 2; i< nbVertices+2; i++)
         {
             line = content[i].Split(' ');
-            print(line[0]);
             float x = float.Parse(line[0], CultureInfo.InvariantCulture);
             float y = float.Parse(line[1], CultureInfo.InvariantCulture);
             float z = float.Parse(line[2], CultureInfo.InvariantCulture);
@@ -89,5 +90,50 @@ public class EXO1 : MonoBehaviour
             vertices[i] =new Vector3(vertices[i].x / max, vertices[i].y / max, vertices[i].z / max) ;
         }
             return vertices;
+    }
+
+    public Mesh removeFaces(Mesh mesh, List<int> facesToRemove)
+    {
+        List<int> triangles = new List<int>(mesh.triangles);
+        facesToRemove.Sort();
+        facesToRemove.Reverse();
+        foreach (int faceIndex in facesToRemove)
+        {
+            triangles.RemoveRange(faceIndex * 3, 3);
+        }
+        mesh.triangles = triangles.ToArray();
+        return mesh;
+    }
+
+    public void ExportToOff(Mesh mesh, string filepath)
+    {
+        using (StreamWriter sw = new StreamWriter(append: false, path: filepath))
+        {
+            sw.WriteLine("OFF");
+            sw.WriteLine(mesh.vertexCount + " " + (mesh.triangles.Length / 3) + " 0");
+            foreach (Vector3 v in mesh.vertices)
+            {
+                sw.WriteLine(v.x.ToString(CultureInfo.InvariantCulture) + " " + v.y.ToString(CultureInfo.InvariantCulture) + " " + v.z.ToString(CultureInfo.InvariantCulture));
+            }
+            for (int i = 0; i < mesh.triangles.Length; i += 3)
+            {
+                sw.WriteLine("3 " + mesh.triangles[i] + " " + mesh.triangles[i + 1] + " " + mesh.triangles[i + 2]);
+            }
+        }
+    }
+
+    public void ExportWrite(Mesh mesh, string filepath)
+    {
+        string output = "OFF\n";
+        output += mesh.vertexCount + " " + (mesh.triangles.Length / 3) + " 0\n";
+        foreach(Vector3 v in mesh.vertices)
+        {
+            output += v.x.ToString(CultureInfo.InvariantCulture) + " " + v.y.ToString(CultureInfo.InvariantCulture) + " " + v.z.ToString(CultureInfo.InvariantCulture) + "\n";
+        }
+        for(int i = 0; i < mesh.triangles.Length; i += 3)
+        {
+            output += "3 " + mesh.triangles[i] + " " + mesh.triangles[i + 1] + " " + mesh.triangles[i + 2] + "\n";
+        }
+        File.WriteAllText(filepath, output);
     }
 }
